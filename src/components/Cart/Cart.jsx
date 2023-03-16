@@ -3,21 +3,38 @@ import './Cart.scss'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutline';
 import { useDispatch, useSelector } from 'react-redux';
 import { removeItem, resetCart } from '../../redux/cartReducer';
+import { loadStripe } from '@stripe/stripe-js';
+import { makeRequest } from '../../makeRequest';
+
 
 const Cart = () => {
-    
-   const products = useSelector(state => state.cart.products);
-   const dispatch = useDispatch();
-   
-   const total = () =>{
+
+  const products = useSelector(state => state.cart.products);
+  const dispatch = useDispatch();
+
+  const total = () => {
     let subTotal = 0;
     products.forEach((item) => (subTotal += item.quantity * item.price));
-    
+
     return subTotal.toFixed(2);
-   }
-    
-    return (
-        <div className="cart">
+  }
+  const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_URL);
+
+  const handlePayment = async () => {
+    try {
+      const stripe = await stripePromise;
+      const res = await makeRequest.post("/orders", {products,})
+
+      await stripe.redirectToCheckout({
+        sessionId: res.data.stripeSession.id,
+      })
+
+    } catch (error) {
+      console.log(error)
+    }
+  }
+  return (
+    <div className="cart">
       <h1>Products in your cart</h1>
       {products?.map((item) => (
         <div className="item" key={item.id}>
@@ -28,12 +45,12 @@ const Cart = () => {
             <div className="price">
               {item.quantity}
               <span> x </span>
-             {item?.price}rs 
+              {item?.price}rs
             </div>
           </div>
           <DeleteOutlinedIcon
             className="delete"
-            onClick={()=> dispatch(removeItem(item.id))}
+            onClick={() => dispatch(removeItem(item.id))}
           />
         </div>
       ))}
@@ -41,12 +58,12 @@ const Cart = () => {
         <span>SUBTOTAL</span>
         <span>{total()}</span>
       </div>
-      <button>PROCEED TO CHECKOUT</button>
+      <button onClick={handlePayment}>PROCEED TO CHECKOUT</button>
       <span className="reset" onClick={() => dispatch(resetCart())}>
         Reset Cart
       </span>
     </div>
-    )
+  )
 }
 
 export default Cart
